@@ -95,8 +95,8 @@ def generate(
     assert np.all((range_z_cm[0] <= points_cm[:, 2]) & (points_cm[:, 2] <= range_z_cm[1])), 'Out of bounds'
 
     np.set_printoptions(threshold=sys.maxsize)
-    os.makedirs(f"scad_{width_mm}mm", exist_ok=True)
-    with open(f"scad_{width_mm}mm/hyperbolycparaboloid.scad", "w") as f:
+    os.makedirs(f"scad_{width_mm:.01f}mm", exist_ok=True)
+    with open(f"scad_{width_mm:.01f}mm/hyperbolycparaboloid.scad", "w") as f:
         f.write(f"points = {np.array2string(points_mm, separator=', ')};\n\n")
         f.write(f"faces = {np.array2string(faces, separator=', ')};\n\n")
         f.write("polyhedron(points, faces, convexity=1);\n\n")

@@ -67,8 +67,8 @@ def generate(
     assert np.all((range_z_cm[0] <= points_cm[:, 2]) & (points_cm[:, 2] <= range_z_cm[1])), 'Out of bounds'
 
     np.set_printoptions(threshold=sys.maxsize)
-    os.makedirs(f"scad_{width_mm}mm", exist_ok=True)
-    with open(f"scad_{width_mm}mm/paraboliccylinder.scad", "w") as f:
+    os.makedirs(f"scad_{width_mm:.01f}mm", exist_ok=True)
+    with open(f"scad_{width_mm:.01f}mm/paraboliccylinder.scad", "w") as f:
         f.write(f"points = {np.array2string(points_mm, separator=', ')};\n\n")
         f.write(f"faces_sides = {np.array2string(faces_sides, separator=', ')};\n\n")
         f.write(f"faces_caps = {np.array2string(faces_caps, separator=', ')};\n\n")
