@@ -39,19 +39,19 @@ def generate(
 
     outer = np.stack([X, Y, Z], axis=-1)
     inner = outer - normal * (width_mm / 10)
-    # Correct the ranges since normal vector can have contributions in each direction
-    inner[:, 0] = np.maximum(inner[:, 0], range_x_cm[0])
-    inner[:, 0] = np.minimum(inner[:, 0], range_x_cm[1])
-    inner[:, 1] = np.maximum(inner[:, 1], range_y_cm[0])
-    inner[:, 1] = np.minimum(inner[:, 1], range_y_cm[1])
-    inner[:, 2] = np.maximum(inner[:, 2], range_z_cm[0])
-    inner[:, 2] = np.minimum(inner[:, 2], range_z_cm[1])
 
     plot(outer, inner)
 
     # Generate polyhedrons for OpenSCAD
     #   Each point is a list of 3 coordinates
     points_cm = np.concatenate([outer, inner], axis=0)
+    # Correct the ranges since normal vector can have contributions in each direction
+    points_cm[:, 0] = np.maximum(points_cm[:, 0], range_x_cm[0])
+    points_cm[:, 0] = np.minimum(points_cm[:, 0], range_x_cm[1])
+    points_cm[:, 1] = np.maximum(points_cm[:, 1], range_y_cm[0])
+    points_cm[:, 1] = np.minimum(points_cm[:, 1], range_y_cm[1])
+    points_cm[:, 2] = np.maximum(points_cm[:, 2], range_z_cm[0])
+    points_cm[:, 2] = np.minimum(points_cm[:, 2], range_z_cm[1])
     points_mm = points_cm * 10
 
     #   Each face is a collection of 6 points:
