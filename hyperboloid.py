@@ -7,17 +7,12 @@ from utils import plot
 
 # Hyperboloid x^2 + 2*y^2 - z^2 = 2*(3*3)
 
-width_mm = 2
-resolution_z_mm = 0.2
-resolution_xy_mm = 0.2
 
-range_x_cm = [-10, 10]
-range_y_cm = [-10, 10]
-range_z_cm = [-10, 10]
-
-
-
-def generate():
+def generate(
+        width_mm=2,
+        resolution_z_mm=0.2, resolution_xy_mm=0.2,
+        range_x_cm=(-10, 10), range_y_cm=(-10, 10), range_z_cm=(-10, 10)
+        ):
     n_z = int((range_z_cm[1] - range_z_cm[0]) / resolution_z_mm) + 1
     max_perimeter_cm = 2 * np.pi * np.max(radius(np.linspace(range_z_cm[0], range_z_cm[1], n_z)))
     n_xy = int(max_perimeter_cm / resolution_xy_mm) + 1
@@ -44,7 +39,11 @@ def generate():
 
     outer = np.stack([X, Y, Z], axis=-1)
     inner = outer - normal * (width_mm / 10)
-    # Correct the range of z since normal vector can have contribution in this direction
+    # Correct the ranges since normal vector can have contributions in each direction
+    inner[:, 0] = np.maximum(inner[:, 0], range_x_cm[0])
+    inner[:, 0] = np.minimum(inner[:, 0], range_x_cm[1])
+    inner[:, 1] = np.maximum(inner[:, 1], range_y_cm[0])
+    inner[:, 1] = np.minimum(inner[:, 1], range_y_cm[1])
     inner[:, 2] = np.maximum(inner[:, 2], range_z_cm[0])
     inner[:, 2] = np.minimum(inner[:, 2], range_z_cm[1])
 
@@ -52,7 +51,8 @@ def generate():
 
     # Generate polyhedrons for OpenSCAD
     #   Each point is a list of 3 coordinates
-    points = np.concatenate([outer, inner], axis=0)
+    points_cm = np.concatenate([outer, inner], axis=0)
+    points_mm = points_cm * 10
 
     #   Each face is a collection of 6 points:
     #       bot_x_first, bot_x_second, bot_y_second, bot_y_first
@@ -73,10 +73,15 @@ def generate():
 
     faces = np.concatenate([faces_outer, face_inner, faces_join_bottom, faces_join_top], axis=0)
 
+    # Check points are within the range
+    assert np.all((range_x_cm[0] <= points_cm[:, 0]) & (points_cm[:, 0] <= range_x_cm[1])), 'Out of bounds'
+    assert np.all((range_y_cm[0] <= points_cm[:, 1]) & (points_cm[:, 1] <= range_y_cm[1])), 'Out of bounds'
+    assert np.all((range_z_cm[0] <= points_cm[:, 2]) & (points_cm[:, 2] <= range_z_cm[1])), 'Out of bounds'
+
     np.set_printoptions(threshold=sys.maxsize)
-    os.makedirs("scad", exist_ok=True)
-    with open("scad/hyperboloid.scad", "w") as f:
-        f.write(f"points = {np.array2string(points, separator=', ')};\n\n")
+    os.makedirs(f"scad_{width_mm}mm", exist_ok=True)
+    with open(f"scad_{width_mm}mm/hyperboloid.scad", "w") as f:
+        f.write(f"points = {np.array2string(points_mm, separator=', ')};\n\n")
         f.write(f"faces = {np.array2string(faces, separator=', ')};\n\n")
         f.write("polyhedron(points, faces, convexity=1);")
 

@@ -6,17 +6,12 @@ import numpy as np
 from utils import plot
 
 
-width_mm = 2
-resolution_z_mm = 0.2
-resolution_xy_mm = 0.2
-
-range_x_cm = [-10, 10]
-range_y_cm = [-10, 10]
-range_z_cm = [0, 10]
-
-
-def generate():
-    n_z = int((range_z_cm[1] - range_z_cm[0]) / resolution_z_mm) + 1
+def generate(
+        width_mm=2,
+        resolution_z_mm=0.2, resolution_xy_mm=0.2,
+        range_x_cm=(-10, 10), range_y_cm=(-10, 10), range_z_cm=(-10, 10)
+        ):
+    n_z = int((range_z_cm[1] - 0) / resolution_z_mm) + 1
     n_xy = int((range_x_cm[1]-range_x_cm[0]) * np.sqrt(2) / resolution_xy_mm)//2 * 2 + 1
     theta = np.linspace(0, 2 * np.pi, n_xy)
 
@@ -25,7 +20,7 @@ def generate():
     z_coords = []
     # Hyperbolic paraboloid: x^2 - y^2 = 2*z
     #   For fixed z values, parameterize (x, y) values
-    for z in np.linspace(range_z_cm[0], range_z_cm[1], n_z):
+    for z in np.linspace(0, range_z_cm[1], n_z):
         if z == 0:
             t = np.concatenate([
                 -np.linspace((-min(range_x_cm[0], range_y_cm[0]))**0.5, 0, (n_xy-1)//2, endpoint=False)**2,
@@ -60,11 +55,18 @@ def generate():
 
     # Generate polyhedrons for OpenSCAD
     #   Each point is a list of 3 coordinates
-    points_outer = np.stack([X, Y, Z], axis=-1) + normal * (width_mm / 10) / 2
-    points_inner = points_outer - normal * (width_mm / 10)
-    # Correct the range of z since normal vector can have contribution in this direction
-    points = np.concatenate([points_outer, points_inner], axis=0)
-    plot(points_outer, points_inner)
+    outer = np.stack([X, Y, Z], axis=-1) + normal * (width_mm / 10) / 2
+    inner = outer - normal * (width_mm / 10)
+    points_cm = np.concatenate([outer, inner], axis=0)
+    # Correct the ranges due to rounding errors, also normal vector can have contributions in each direction
+    points_cm[:, 0] = np.maximum(points_cm[:, 0], range_x_cm[0])
+    points_cm[:, 0] = np.minimum(points_cm[:, 0], range_x_cm[1])
+    points_cm[:, 1] = np.maximum(points_cm[:, 1], range_y_cm[0])
+    points_cm[:, 1] = np.minimum(points_cm[:, 1], range_y_cm[1])
+    points_cm[:, 2] = np.maximum(points_cm[:, 2], range_z_cm[0])
+    points_cm[:, 2] = np.minimum(points_cm[:, 2], range_z_cm[1])
+    points_mm = 10*points_cm
+    plot(outer, inner)
 
     #   Each face is a collection of 6 points:
     #       bot_x_first, bot_x_second, bot_y_second, bot_y_first
@@ -87,10 +89,15 @@ def generate():
     faces_edges = np.concatenate([faces_join_top, faces_left, faces_right], axis=0)
     faces = np.concatenate([faces_outer, faces_inner, faces_edges], axis=0)
 
+    # Check points are within the range
+    assert np.all((range_x_cm[0] <= points_cm[:, 0]) & (points_cm[:, 0] <= range_x_cm[1])), 'Out of bounds'
+    assert np.all((range_y_cm[0] <= points_cm[:, 1]) & (points_cm[:, 1] <= range_y_cm[1])), 'Out of bounds'
+    assert np.all((range_z_cm[0] <= points_cm[:, 2]) & (points_cm[:, 2] <= range_z_cm[1])), 'Out of bounds'
+
     np.set_printoptions(threshold=sys.maxsize)
-    os.makedirs("scad", exist_ok=True)
-    with open("scad/hyperbolycparaboloid.scad", "w") as f:
-        f.write(f"points = {np.array2string(points, separator=', ')};\n\n")
+    os.makedirs(f"scad_{width_mm}mm", exist_ok=True)
+    with open(f"scad_{width_mm}mm/hyperbolycparaboloid.scad", "w") as f:
+        f.write(f"points = {np.array2string(points_mm, separator=', ')};\n\n")
         f.write(f"faces = {np.array2string(faces, separator=', ')};\n\n")
         f.write("polyhedron(points, faces, convexity=1);\n\n")
 

@@ -9,16 +9,12 @@ from utils import plot
 # Ellipsoid: x^2 + y^2 = 1-2z^2
 #   We only generate half of it for printing
 
-width_mm = 2
-resolution_z_mm = 0.1
-resolution_xy_mm = 0.1
 
-range_x_cm = [-10, 10]
-range_y_cm = [-10, 10]
-range_z_cm = [0, 10]
-
-
-def generate():
+def generate(
+        width_mm=2,
+        resolution_z_mm=0.1, resolution_xy_mm=0.1,
+        range_x_cm=(-10, 10), range_y_cm=(-10, 10), range_z_cm=(0, 10),
+        ):
     max_n_z = int((range_z_cm[1] - range_z_cm[0]) / resolution_z_mm) + 1
     max_perimeter_cm = 2 * np.pi * np.nanmax(np.sqrt(1 - 2*np.linspace(range_z_cm[0], range_z_cm[1], max_n_z)**2))
     n_xy = int(max_perimeter_cm / resolution_xy_mm) + 1
@@ -57,7 +53,8 @@ def generate():
     # Correct the range of z since normal vector can have contribution in this direction
     points_inner[:, 2] = np.maximum(points_inner[:, 2], range_z_cm[0])
     points_inner[:, 2] = np.minimum(points_inner[:, 2], range_z_cm[1])
-    points = np.concatenate([points_outer, points_inner], axis=0)
+    points_cm = np.concatenate([points_outer, points_inner], axis=0)
+    points_mm = 10*points_cm
     plot(points_outer, points_inner)
 
     #   Each face is a collection of 6 points:
@@ -80,11 +77,15 @@ def generate():
 
     faces_bottom = np.stack([idcs[1:], idcs[:-1], idcs[:-1] + n_xy*n_z+1, idcs[1:] + n_xy*n_z+1], axis=-1)
 
+    # Check points are within the range
+    assert np.all((range_x_cm[0] <= points_cm[:, 0]) & (points_cm[:, 0] <= range_x_cm[1])), 'Out of bounds'
+    assert np.all((range_y_cm[0] <= points_cm[:, 1]) & (points_cm[:, 1] <= range_y_cm[1])), 'Out of bounds'
+    assert np.all((range_z_cm[0] <= points_cm[:, 2]) & (points_cm[:, 2] <= range_z_cm[1])), 'Out of bounds'
 
     np.set_printoptions(threshold=sys.maxsize)
-    os.makedirs("scad", exist_ok=True)
-    with open("scad/ellipsoid.scad", "w") as f:
-        f.write(f"points = {np.array2string(points, separator=', ')};\n\n")
+    os.makedirs(f"scad_{width_mm}mm", exist_ok=True)
+    with open(f"scad_{width_mm}mm/ellipsoid.scad", "w") as f:
+        f.write(f"points = {np.array2string(points_mm, separator=', ')};\n\n")
         f.write(f"faces_sides = {np.array2string(faces_sides, separator=', ')};\n\n")
         f.write(f"faces_caps = {np.array2string(faces_caps, separator=', ')};\n\n")
         f.write(f"faces_bottom = {np.array2string(faces_bottom, separator=', ')};\n\n")

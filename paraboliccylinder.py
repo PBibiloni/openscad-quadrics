@@ -9,16 +9,12 @@ from utils import plot
 # Ellipsoid: x^2 + y^2 = 1-2z^2
 #   We only generate half of it for printing
 
-width_mm = 2
-resolution_z_mm = 0.1
-resolution_xy_mm = 0.1
 
-range_x_cm = [-10, 10]
-range_y_cm = [0, 20]
-range_z_cm = [-10, 10]
-
-
-def generate():
+def generate(
+        width_mm=2,
+        resolution_z_mm=0.1, resolution_xy_mm=0.1,
+        range_x_cm=(-10, 10), range_y_cm=(0, 20), range_z_cm=(-10, 10)
+        ):
     n_xy = int((range_x_cm[1]-range_x_cm[0])*np.sqrt(2) / resolution_xy_mm) + 1
     t = np.linspace(range_x_cm[0], range_x_cm[1], n_xy)
 
@@ -47,7 +43,8 @@ def generate():
     #   Each point is a list of 3 coordinates
     points_outer = np.stack([X, Y, Z], axis=-1)
     points_inner = points_outer - normal * (width_mm / 10)
-    points = np.concatenate([points_outer, points_inner], axis=0)
+    points_cm = np.concatenate([points_outer, points_inner], axis=0)
+    points_mm = points_cm * 10
     plot(points_outer, points_inner)
 
     #   Each face is a collection of 6 points:
@@ -64,10 +61,15 @@ def generate():
         np.asarray([[0, n_xy, 3 * n_xy, 2 * n_xy], [n_xy - 1, 2 * n_xy - 1, 4 * n_xy - 1, 3 * n_xy - 1]])
     ])
 
+    # Check points are within the range
+    assert np.all((range_x_cm[0] <= points_cm[:, 0]) & (points_cm[:, 0] <= range_x_cm[1])), 'Out of bounds'
+    assert np.all((range_y_cm[0] <= points_cm[:, 1]) & (points_cm[:, 1] <= range_y_cm[1])), 'Out of bounds'
+    assert np.all((range_z_cm[0] <= points_cm[:, 2]) & (points_cm[:, 2] <= range_z_cm[1])), 'Out of bounds'
+
     np.set_printoptions(threshold=sys.maxsize)
-    os.makedirs("scad", exist_ok=True)
-    with open("scad/paraboliccylinder.scad", "w") as f:
-        f.write(f"points = {np.array2string(points, separator=', ')};\n\n")
+    os.makedirs(f"scad_{width_mm}mm", exist_ok=True)
+    with open(f"scad_{width_mm}mm/paraboliccylinder.scad", "w") as f:
+        f.write(f"points = {np.array2string(points_mm, separator=', ')};\n\n")
         f.write(f"faces_sides = {np.array2string(faces_sides, separator=', ')};\n\n")
         f.write(f"faces_caps = {np.array2string(faces_caps, separator=', ')};\n\n")
         f.write("polyhedron(points, concat(faces_sides, faces_caps), convexity=1);")

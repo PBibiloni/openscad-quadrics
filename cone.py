@@ -18,17 +18,22 @@ range_y_cm = [-10, 10]
 range_z_cm = [-10, 0]
 
 
-def generate(a=1, b=1):
-    n_z = int((range_z_cm[1] - range_z_cm[0]) / resolution_z_mm) + 1
+def generate(
+        a=1, b=1,
+        width_mm=2,
+        resolution_z_mm=0.1, resolution_xy_mm=0.1,
+        range_x_cm=(-10, 10), range_y_cm=(-10, 10), range_z_cm=(-10, 0)
+        ):
+    # Cone: z^2 = a*x^2 + b*y^2
     max_perimeter_cm = 2 * np.pi * -range_z_cm[0]
     n_xy = int(max_perimeter_cm / resolution_xy_mm) + 1
     theta = np.linspace(0, 2 * np.pi, n_xy)
 
-    # Cone: z^2 = a*x^2 + b*y^2
     #   For fixed z values, parameterize (x, y) values
-    x_coords = [range_z_cm[0]*np.cos(theta)/np.sqrt(a)] + [[0]]
-    y_coords = [range_z_cm[0]*np.sin(theta)/np.sqrt(b)] + [[0]]
-    z_coords = [range_z_cm[0]*np.ones_like(theta)] + [[0]]
+    min_z = max([range_z_cm[0], range_x_cm[0] * np.sqrt(a), range_y_cm[0] * np.sqrt(b)])
+    x_coords = [min_z*np.cos(theta)/np.sqrt(a)] + [[0]]
+    y_coords = [min_z*np.sin(theta)/np.sqrt(b)] + [[0]]
+    z_coords = [min_z*np.ones_like(theta)] + [[0]]
 
     X = np.concatenate(x_coords)
     Y = np.concatenate(y_coords)
@@ -46,7 +51,8 @@ def generate(a=1, b=1):
     # Correct the range of z since normal vector can have contribution in this direction
     points_inner[:, 2] = np.maximum(points_inner[:, 2], range_z_cm[0])
     points_inner[:, 2] = np.minimum(points_inner[:, 2], range_z_cm[1])
-    points = np.concatenate([points_outer, points_inner], axis=0)
+    points_cm = np.concatenate([points_outer, points_inner], axis=0)
+    points_mm = points_cm * 10
     plot(points_outer, points_inner)
 
     #   Each face is a collection of 6 points:
@@ -63,10 +69,15 @@ def generate(a=1, b=1):
 
     faces_bottom = np.stack([idcs[1:], idcs[:-1], idcs[:-1] + n_xy+1, idcs[1:] + n_xy+1], axis=-1)
 
+    # Check points are within the range
+    assert np.all((range_x_cm[0] <= points_cm[:, 0]) & (points_cm[:, 0] <= range_x_cm[1])), 'Out of bounds'
+    assert np.all((range_y_cm[0] <= points_cm[:, 1]) & (points_cm[:, 1] <= range_y_cm[1])), 'Out of bounds'
+    assert np.all((range_z_cm[0] <= points_cm[:, 2]) & (points_cm[:, 2] <= range_z_cm[1])), 'Out of bounds'
+
     np.set_printoptions(threshold=sys.maxsize)
-    os.makedirs("scad", exist_ok=True)
-    with open(f"scad/cone_{a:.02f}_{b:.02f}.scad", "w") as f:
-        f.write(f"points = {np.array2string(points, separator=', ')};\n\n")
+    os.makedirs(f"scad_{width_mm}mm", exist_ok=True)
+    with open(f"scad_{width_mm}mm/cone_{a:.02f}_{b:.02f}.scad", "w") as f:
+        f.write(f"points = {np.array2string(points_mm, separator=', ')};\n\n")
         f.write(f"faces_caps = {np.array2string(faces_caps, separator=', ')};\n\n")
         f.write(f"faces_bottom = {np.array2string(faces_bottom, separator=', ')};\n\n")
         f.write("polyhedron(points, concat(faces_caps, faces_bottom), convexity=1);")
