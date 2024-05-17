@@ -65,7 +65,7 @@ def generate(a=1, b=1):
 
     np.set_printoptions(threshold=sys.maxsize)
     os.makedirs("scad", exist_ok=True)
-    with open("scad/cone_{a:.02f}_{b:.02f}.scad", "w") as f:
+    with open(f"scad/cone_{a:.02f}_{b:.02f}.scad", "w") as f:
         f.write(f"points = {np.array2string(points, separator=', ')};\n\n")
         f.write(f"faces_caps = {np.array2string(faces_caps, separator=', ')};\n\n")
         f.write(f"faces_bottom = {np.array2string(faces_bottom, separator=', ')};\n\n")
