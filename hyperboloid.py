@@ -5,28 +5,29 @@ import numpy as np
 
 from utils import plot
 
-# Hyperboloid x^2 + 2*y^2 - z^2 = 2*(3*3)
-
 
 def generate(
+        a=1, b=2,
         width_mm=2,
         resolution_z_mm=0.2, resolution_xy_mm=0.2,
         range_x_cm=(-10, 10), range_y_cm=(-10, 10), range_z_cm=(-10, 10)
         ):
-    n_z = int((range_z_cm[1] - range_z_cm[0]) / resolution_z_mm) + 1
-    max_perimeter_cm = 2 * np.pi * np.max(radius(np.linspace(range_z_cm[0], range_z_cm[1], n_z)))
+    """ Hyperboloid a*x^2 + b*y^2 - z^2 = 2*(3*3). """
+    min_z = max([range_z_cm[0], -np.sqrt(range_x_cm[0]**2 * a - 18), -np.sqrt(range_y_cm[0]**2 * b - 18)])
+    max_z = min([range_z_cm[1], np.sqrt(range_x_cm[1]**2 * a - 18), np.sqrt(range_y_cm[1]**2 * b - 18)])
+    n_z = int((max_z - min_z) / resolution_z_mm) + 1
+    max_perimeter_cm = 2 * np.pi * np.max(radius(np.linspace(min_z, max_z, n_z)))
     n_xy = int(max_perimeter_cm / resolution_xy_mm) + 1
     theta = np.linspace(0, 2 * np.pi, n_xy)
 
     x_coords = []
     y_coords = []
     z_coords = []
-    # Hyperboloid: x^2 + y^2 = 2*z
     #   For fixed z values, parameterize (x, y) values
-    for z in np.linspace(range_z_cm[0], range_z_cm[1], n_z):
+    for z in np.linspace(min_z, max_z, n_z):
         r = radius(z)
-        x_coords.append(r*np.cos(theta))
-        y_coords.append(r*np.sin(theta)/np.sqrt(2))
+        x_coords.append(r*np.cos(theta)/np.sqrt(a))
+        y_coords.append(r*np.sin(theta)/np.sqrt(b))
         z_coords.append(z*np.ones_like(theta))
 
     X = np.concatenate(x_coords)
@@ -34,7 +35,7 @@ def generate(
     Z = np.concatenate(z_coords)
 
     # Normal direction at each point:
-    normal = np.stack([X, 2*Y, -np.ones_like(Z)], axis=-1)   # Normal: A x_0 + B -> [x_0, 2*y_0, -1]
+    normal = np.stack([a*X, b*Y, -np.ones_like(Z)], axis=-1)   # Normal: A x_0 + B -> [a*x_0, b*y_0, -1]
     normal /= np.linalg.norm(normal, axis=-1)[..., np.newaxis]
 
     outer = np.stack([X, Y, Z], axis=-1)
@@ -89,6 +90,7 @@ def generate(
 def radius(z):
     """ Radius of the conic section at height z. """
     return np.sqrt(18 + z**2)
+
 
 if __name__ == "__main__":
     generate()
