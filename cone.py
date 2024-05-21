@@ -87,4 +87,4 @@ def generate(
 if __name__ == "__main__":
     generate(0.5, 0.5)
     generate(0.5, 1)
-    generate(2, 1)
+    generate(2, 2)
